@@ -1,6 +1,16 @@
 pragma solidity >=0.8.2 <0.9.0;
 
-struct Packet {
+import "hardhat/console.sol";
+
+/// @param v Part of the ECDSA signature
+/// @param r Part of the ECDSA signature
+/// @param s Part of the ECDSA signature
+/// @param request Identifier for verifying the packet is what is desired
+/// , rather than a packet for some other function/contract
+/// @param deadline The Unix timestamp (in seconds) after which the packet
+/// should be rejected by the contract
+/// @param payload The payload of the packet
+struct TrustusPacket {
     uint8 v;
     bytes32 r;
     bytes32 s;
@@ -11,7 +21,7 @@ struct Packet {
 
 // Define the DustSweeper contract interface
 interface DustSweeper {
-    function sweepDust(address[] memory makers, address[] memory tokenAddresses, Packet memory packet) external payable;
+    function sweepDust(address[] calldata makers, address[] calldata tokenAddresses, TrustusPacket calldata packet) external payable;
 }
 
 interface IERC20 {
@@ -39,6 +49,7 @@ contract TakerBot {
     }
 
     function compareAndSwap(address tokenAddress) private returns (bool) {
+        console.log("Comparing and swapping");
         uint256 amount = IERC20(tokenAddress).balanceOf(address(this));
 
         if (amount > 0) {
@@ -106,16 +117,28 @@ contract TakerBot {
     }
     // You will need to implement this function separately
 
-    function runSweep(address[] memory makers, address[] memory tokenAddresses, Packet memory packet, bool onlyProfit) public payable {
+    function runSweep(
+      address[] calldata makers,
+      address[] calldata tokenAddresses,
+      TrustusPacket calldata packet
+    ) public payable {
+        console.log("Running sweep");
         uint256 startGas = gasleft();
         uint256 startBalance = address(this).balance;
 
-        // Instantiate the DustSweeper contract
+        console.log("getting DustSweeper");
+
         DustSweeper dustSweeper = DustSweeper(DUSTSWEEPER_ADDRESS);
 
+        console.log("running sweepDust");
+        console.log(msg.value);
+        console.log(address(this).balance);
+        console.log(packet.deadline);
+        
         // Call the sweepDust function on the DustSweeper contract
         dustSweeper.sweepDust{value: msg.value}(makers, tokenAddresses, packet);
 
+        console.log("iterating through token addresses");
         // Iterate through token addresses and call compare_and_swap
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
             compareAndSwap(tokenAddresses[i]);
@@ -127,8 +150,6 @@ contract TakerBot {
         uint256 diffBalance = endBalance - startBalance;
         uint256 txCost = diffGas * tx.gasprice;
 
-        if (onlyProfit) {
-            require(txCost < diffBalance, "Transaction cost exceeds balance difference");
-        }
+        require(txCost < diffBalance, "Transaction cost exceeds balance difference");
     }
 }

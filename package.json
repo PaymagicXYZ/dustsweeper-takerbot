@@ -8,13 +8,26 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@types/jest": "^29.5.4",
+    "@types/mocha": "^10.0.1",
     "axios": "^1.5.0",
     "dotenv": "^16.3.1",
-    "ethers": "^5.7.0",
+    "ethers": "^6.7.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
   },
   "devDependencies": {
-    "hardhat": "^2.17.3"
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
+    "@nomicfoundation/hardhat-ethers": "^3.0.4",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.9",
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@nomicfoundation/hardhat-verify": "^1.1.1",
+    "@typechain/ethers-v6": "^0.5.0",
+    "@typechain/hardhat": "^9.0.0",
+    "chai": "^4.3.8",
+    "hardhat": "^2.17.3",
+    "hardhat-gas-reporter": "^1.0.9",
+    "solidity-coverage": "^0.8.4",
+    "typechain": "^8.3.1"
   }
 }

@@ -1,4 +1,4 @@
-FROM node:dubnium-alpine
+FROM node:14-alpine
 
 # Install build dependencies
 RUN apk add --no-cache --virtual .gyp \

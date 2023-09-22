@@ -1,6 +1,6 @@
-import config from './config'
-import { cron } from './utils/cron'
-import { executeSweeps } from './main'
+import config from './src/config'
+import { cron } from './src/utils/cron'
+import { executeSweeps } from './src/main'
 
 export const startTakerBot = () => cron(config.botSettings.refreshInterval, 'takerBot', executeSweeps)
 

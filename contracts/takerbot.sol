@@ -1,7 +1,5 @@
 pragma solidity >=0.8.2 <0.9.0;
 
-import "hardhat/console.sol";
-
 /// @param v Part of the ECDSA signature
 /// @param r Part of the ECDSA signature
 /// @param s Part of the ECDSA signature
@@ -32,124 +30,98 @@ interface IERC20 {
 
 contract TakerBot {
     address public constant DUSTSWEEPER_ADDRESS = 0x78106f7db3EbCEe3D2CFAC647f0E4c9b06683B39;
-    address constant ZERO_ADDRESS = address(0);
-    uint256 constant MAX_UINT256 = type(uint256).max;
-    address constant WETH = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2); // Replace with the actual WETH address
-    address[] public ROUTERS = [
-        0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D,  // uniswap
-        0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F   // sushi
-    ];
+    address public constant ONE_INCH_ROUTER = 0x1111111254EEB25477B68fb85Ed929f73A960582;
 
+    receive() external payable {}
     mapping(address => mapping(address => bool)) public isApproved;
 
     address public owner;
+    address public futureOwner;
 
     constructor() {
         owner = msg.sender;
     }
 
-    function compareAndSwap(address tokenAddress) private returns (bool) {
-        console.log("Comparing and swapping");
+    /// @notice Modifier to ensure that only the owner can call a function
+    modifier onlyOwner() {
+      require(msg.sender == owner, "Only the owner can call this function");
+      _;
+    }
+
+    /// @notice Compare the current balance of the contract with the balance
+    /// of the specified token address, and if the balance is greater than 0,
+    /// swap the token for ETH using 1inch
+    /// @param tokenAddress The address of the token to swap
+    /// @param oneinchData The 1inch call data for the token
+    /// @return Whether the swap was successful
+    function compareAndSwap(address tokenAddress, bytes calldata oneinchData) private returns (bool) {
         uint256 amount = IERC20(tokenAddress).balanceOf(address(this));
-
+        
         if (amount > 0) {
-            uint256 bestExpected = 0;
-            address router;
-
-            address[] memory path = new address[](2);
-            path[0] = tokenAddress;
-            path[1] = WETH;
-
-            for (uint256 i = 0; i < ROUTERS.length; i++) {
-                (bool success, bytes memory data) = address(ROUTERS[i]).call(
-                    abi.encodeWithSignature(
-                        "getAmountsOut(uint256,address[])",
-                        amount,
-                        path
-                    )
-                );
-
-                if (success) {
-                    uint256 expected = abi.decode(data, (uint256));
-                    if (expected > bestExpected) {
-                        bestExpected = expected;
-                        router = ROUTERS[i];
-                    }
-                } else {
-                    // Handle the call failure here (e.g., log an error or take appropriate action).
-                }
-            }
-
             // Make sure the router is approved to transfer the coin
-            if (!isApproved[router][tokenAddress]) {
-
+            if (!isApproved[ONE_INCH_ROUTER][tokenAddress]) {
                 // Check the current allowance of the router contract for the token
-                uint256 currentAllowance = IERC20(tokenAddress).allowance(address(this), router);
+                uint256 currentAllowance = IERC20(tokenAddress).allowance(address(this), ONE_INCH_ROUTER);
 
                 if (currentAllowance < amount) {
                     // Approve the router contract to spend the required amount of tokens
-                    bool approvalSuccess = IERC20(tokenAddress).approve(router, amount);
-
+                    bool approvalSuccess = IERC20(tokenAddress).approve(ONE_INCH_ROUTER, amount);
                     require(approvalSuccess, "Approval failed");
                 }
 
-                isApproved[router][tokenAddress] = true;
-                // bytes memory approvalResponse = IERC20(tokenAddress).approve(router, MAX_UINT256);
-                // require(abi.decode(approvalResponse, (bool)), "Approval failed");
-                // isApproved[router][tokenAddress] = true;
+                isApproved[ONE_INCH_ROUTER][tokenAddress] = true;
             }
 
-            (bool swapSuccess, ) = router.call{value: 0}(
-                abi.encodeWithSignature(
-                    "swapExactTokensForETH(uint256,uint256,address[],address,uint256)",
-                    amount,
-                    bestExpected,
-                    path,
-                    owner,
-                    block.timestamp + 60
-                )
+             (bool swapSuccess,) = ONE_INCH_ROUTER.call{value: 0}(
+                oneinchData
             );
-
-            require(swapSuccess, "Swap failed");
-        }
+            require(swapSuccess, "1INCH_SWAP_FAIL");
+      }
 
         return true;
     }
-    // You will need to implement this function separately
 
+    /// @notice Run a sweep of the specified token addresses
+    /// @param makers The addresses of the makers to sweep
+    /// @param tokenAddresses The addresses of the tokens to sweep
+    /// @param packet The packet to verify
+    /// @param uniqueTokenAddresses The addresses of the unique tokens to swap
+    /// @param oneinchCallDataByToken The 1inch call data for each token
     function runSweep(
       address[] calldata makers,
       address[] calldata tokenAddresses,
-      TrustusPacket calldata packet
+      TrustusPacket calldata packet,
+      address[] calldata uniqueTokenAddresses,
+      bytes[] calldata oneinchCallDataByToken
     ) public payable {
-        console.log("Running sweep");
-        uint256 startGas = gasleft();
-        uint256 startBalance = address(this).balance;
-
-        console.log("getting DustSweeper");
-
         DustSweeper dustSweeper = DustSweeper(DUSTSWEEPER_ADDRESS);
 
-        console.log("running sweepDust");
-        console.log(msg.value);
-        console.log(address(this).balance);
-        console.log(packet.deadline);
-        
         // Call the sweepDust function on the DustSweeper contract
         dustSweeper.sweepDust{value: msg.value}(makers, tokenAddresses, packet);
 
-        console.log("iterating through token addresses");
+
         // Iterate through token addresses and call compare_and_swap
-        for (uint256 i = 0; i < tokenAddresses.length; i++) {
-            compareAndSwap(tokenAddresses[i]);
+        for (uint256 i = 0; i < uniqueTokenAddresses.length; i++) {
+          compareAndSwap(uniqueTokenAddresses[i], oneinchCallDataByToken[i]);
         }
+    }
+    
+    /// @notice Transfer ownership of the contract to a new address
+    /// @param _futureOwner The address of the new owner
+    function commitOwnershipTransfer(address _futureOwner) external onlyOwner returns (bool) {
+        futureOwner = _futureOwner;
+        return true;
+    }
 
-        uint256 endGas = gasleft();
-        uint256 endBalance = address(this).balance;
-        uint256 diffGas = startGas - endGas;
-        uint256 diffBalance = endBalance - startBalance;
-        uint256 txCost = diffGas * tx.gasprice;
+    /// @notice Accept ownership of the contract
+    function acceptOwnershipTransfer() external returns (bool) {
+        require(msg.sender == futureOwner, "Only the future owner can accept ownership transfer");
+        owner = msg.sender;
+        return true;
+    }
 
-        require(txCost < diffBalance, "Transaction cost exceeds balance difference");
+    /// @notice Payout the ETH balance of the contract to the owner
+    function payoutEth() external onlyOwner {
+        payable(owner).transfer(address(this).balance);
     }
 }

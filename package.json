@@ -5,9 +5,14 @@
   "author": "Evgeny Nasretdinov",
   "scripts": {
     "build": "rm -rf ./dist && tsc",
-    "start": "node dist/index.js"
+    "generate-types": "typechain --target ethers-v6 --out-dir=src/abis/types/ \"src/abis/*.json\"",
+    "start": "node dist/index.js",
+    "test": "npx hardhat test --network hardhat",
+    "compile": "npx hardhat compile",
+    "deploy": "npx hardhat run --network mainnet src/utils/deploy.ts"
   },
   "dependencies": {
+    "@flashbots/ethers-provider-bundle": "^0.6.2",
     "@types/jest": "^29.5.4",
     "@types/mocha": "^10.0.1",
     "axios": "^1.5.0",
@@ -22,6 +27,7 @@
     "@nomicfoundation/hardhat-network-helpers": "^1.0.9",
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@nomicfoundation/hardhat-verify": "^1.1.1",
+    "@tenderly/hardhat-tenderly": "^1.7.7",
     "@typechain/ethers-v6": "^0.5.0",
     "@typechain/hardhat": "^9.0.0",
     "chai": "^4.3.8",

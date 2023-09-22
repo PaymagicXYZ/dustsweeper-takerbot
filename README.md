@@ -1,6 +1,6 @@
-# Dustsweeper Takerbot Readme
+# Dustsweeper Takerbot
 
-Dustsweeper Takerbot is a utility designed to interact with the DustSweeper contract, enabling users to exchange small balance tokens ("dust") for ETH without incurring costly gas transaction fees. This readme provides a simple guide on how to set up and use the bot effectively.
+Dustsweeper Takerbot is designed to interact with the DustSweeper contract, allowing users to swap small balance tokens ("dust") for ETH without incurring expensive gas transaction fees. Here's how to set up and use this bot:
 
 ## Project Setup
 

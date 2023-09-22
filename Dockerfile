@@ -1,13 +1,5 @@
 FROM node:14-alpine
 
-# Install build dependencies
-RUN apk add --no-cache --virtual .gyp \
-  python \
-  make \
-  g++ \
-  git \
-  linux-headers bash openssh musl build-base ca-certificates
-
 # Add working directory in the docker container
 WORKDIR /usr/src/app
 

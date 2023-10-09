@@ -3,24 +3,28 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  EventFragment,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PayableOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedLogDescription,
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
+import type {
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
 export declare namespace Trustus {
@@ -34,25 +38,64 @@ export declare namespace Trustus {
   };
 
   export type TrustusPacketStructOutput = [
-    v: bigint,
-    r: string,
-    s: string,
-    request: string,
-    deadline: bigint,
-    payload: string
+    number,
+    string,
+    string,
+    string,
+    BigNumber,
+    string
   ] & {
-    v: bigint;
+    v: number;
     r: string;
     s: string;
     request: string;
-    deadline: bigint;
+    deadline: BigNumber;
     payload: string;
   };
 }
 
-export interface DustSweeperInterface extends Interface {
+export interface DustSweeperInterface extends utils.Interface {
+  functions: {
+    "DOMAIN_SEPARATOR()": FunctionFragment;
+    "MAX_PROTOCOL_FEE_PCT()": FunctionFragment;
+    "MAX_PROTOCOL_PAYOUT_SPLIT_PCT()": FunctionFragment;
+    "MAX_SWEEP_ORDER_SIZE()": FunctionFragment;
+    "MAX_TAKER_DISCOUNT_PCT()": FunctionFragment;
+    "MIN_OVERAGE_RETURN_WEI()": FunctionFragment;
+    "TRUSTUS_REQUEST_VALUE()": FunctionFragment;
+    "destinations(address)": FunctionFragment;
+    "getIsTrusted(address)": FunctionFragment;
+    "getTokenDecimals(address)": FunctionFragment;
+    "getTokenTakerDiscountTier(address)": FunctionFragment;
+    "governorWallet()": FunctionFragment;
+    "owner()": FunctionFragment;
+    "payoutProtocolFees()": FunctionFragment;
+    "protocolFee()": FunctionFragment;
+    "protocolPayoutSplit()": FunctionFragment;
+    "protocolWallet()": FunctionFragment;
+    "renounceOwnership()": FunctionFragment;
+    "setDestinationAddress(address)": FunctionFragment;
+    "setGovernorWallet(address)": FunctionFragment;
+    "setProtocolFeePercent(uint256)": FunctionFragment;
+    "setProtocolPayoutSplit(uint256)": FunctionFragment;
+    "setProtocolWallet(address)": FunctionFragment;
+    "setTakerDiscountPercent(uint256,uint8)": FunctionFragment;
+    "setTokenDecimals(address,uint8)": FunctionFragment;
+    "setTokenTakerDiscountTier(address,uint8)": FunctionFragment;
+    "setupToken(address)": FunctionFragment;
+    "sweepDust(address[],address[],(uint8,bytes32,bytes32,bytes32,uint256,bytes))": FunctionFragment;
+    "sweepWhitelist(address)": FunctionFragment;
+    "sweepWhitelistOn()": FunctionFragment;
+    "takerDiscountTiers(uint8)": FunctionFragment;
+    "toggleIsTrusted(address)": FunctionFragment;
+    "toggleSweepWhitelist()": FunctionFragment;
+    "toggleSweepWhitelistAddress(address)": FunctionFragment;
+    "transferOwnership(address)": FunctionFragment;
+    "withdrawToken(address)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "DOMAIN_SEPARATOR"
       | "MAX_PROTOCOL_FEE_PCT"
       | "MAX_PROTOCOL_PAYOUT_SPLIT_PCT"
@@ -91,10 +134,6 @@ export interface DustSweeperInterface extends Interface {
       | "withdrawToken"
   ): FunctionFragment;
 
-  getEvent(
-    nameOrSignatureOrTopic: "OwnershipTransferred" | "ProtocolPayout" | "Sweep"
-  ): EventFragment;
-
   encodeFunctionData(
     functionFragment: "DOMAIN_SEPARATOR",
     values?: undefined
@@ -125,19 +164,19 @@ export interface DustSweeperInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "destinations",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "getIsTrusted",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "getTokenDecimals",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "getTokenTakerDiscountTier",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "governorWallet",
@@ -166,11 +205,11 @@ export interface DustSweeperInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "setDestinationAddress",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "setGovernorWallet",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "setProtocolFeePercent",
@@ -182,7 +221,7 @@ export interface DustSweeperInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "setProtocolWallet",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "setTakerDiscountPercent",
@@ -190,23 +229,20 @@ export interface DustSweeperInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "setTokenDecimals",
-    values: [AddressLike, BigNumberish]
+    values: [string, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "setTokenTakerDiscountTier",
-    values: [AddressLike, BigNumberish]
+    values: [string, BigNumberish]
   ): string;
-  encodeFunctionData(
-    functionFragment: "setupToken",
-    values: [AddressLike]
-  ): string;
+  encodeFunctionData(functionFragment: "setupToken", values: [string]): string;
   encodeFunctionData(
     functionFragment: "sweepDust",
-    values: [AddressLike[], AddressLike[], Trustus.TrustusPacketStruct]
+    values: [string[], string[], Trustus.TrustusPacketStruct]
   ): string;
   encodeFunctionData(
     functionFragment: "sweepWhitelist",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "sweepWhitelistOn",
@@ -218,7 +254,7 @@ export interface DustSweeperInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "toggleIsTrusted",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "toggleSweepWhitelist",
@@ -226,15 +262,15 @@ export interface DustSweeperInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "toggleSweepWhitelistAddress",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "transferOwnership",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "withdrawToken",
-    values: [AddressLike]
+    values: [string]
   ): string;
 
   decodeFunctionResult(
@@ -372,464 +408,820 @@ export interface DustSweeperInterface extends Interface {
     functionFragment: "withdrawToken",
     data: BytesLike
   ): Result;
+
+  events: {
+    "OwnershipTransferred(address,address)": EventFragment;
+    "ProtocolPayout(uint256,uint256)": EventFragment;
+    "Sweep(address,address,uint256,uint256)": EventFragment;
+  };
+
+  getEvent(nameOrSignatureOrTopic: "OwnershipTransferred"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "ProtocolPayout"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "Sweep"): EventFragment;
 }
 
-export namespace OwnershipTransferredEvent {
-  export type InputTuple = [previousOwner: AddressLike, newOwner: AddressLike];
-  export type OutputTuple = [previousOwner: string, newOwner: string];
-  export interface OutputObject {
-    previousOwner: string;
-    newOwner: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface OwnershipTransferredEventObject {
+  previousOwner: string;
+  newOwner: string;
 }
+export type OwnershipTransferredEvent = TypedEvent<
+  [string, string],
+  OwnershipTransferredEventObject
+>;
 
-export namespace ProtocolPayoutEvent {
-  export type InputTuple = [
-    protocolSplit: BigNumberish,
-    governorSplit: BigNumberish
-  ];
-  export type OutputTuple = [protocolSplit: bigint, governorSplit: bigint];
-  export interface OutputObject {
-    protocolSplit: bigint;
-    governorSplit: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
+export type OwnershipTransferredEventFilter =
+  TypedEventFilter<OwnershipTransferredEvent>;
 
-export namespace SweepEvent {
-  export type InputTuple = [
-    makerAddress: AddressLike,
-    tokenAddress: AddressLike,
-    tokenAmount: BigNumberish,
-    ethAmount: BigNumberish
-  ];
-  export type OutputTuple = [
-    makerAddress: string,
-    tokenAddress: string,
-    tokenAmount: bigint,
-    ethAmount: bigint
-  ];
-  export interface OutputObject {
-    makerAddress: string;
-    tokenAddress: string;
-    tokenAmount: bigint;
-    ethAmount: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface ProtocolPayoutEventObject {
+  protocolSplit: BigNumber;
+  governorSplit: BigNumber;
 }
+export type ProtocolPayoutEvent = TypedEvent<
+  [BigNumber, BigNumber],
+  ProtocolPayoutEventObject
+>;
+
+export type ProtocolPayoutEventFilter = TypedEventFilter<ProtocolPayoutEvent>;
+
+export interface SweepEventObject {
+  makerAddress: string;
+  tokenAddress: string;
+  tokenAmount: BigNumber;
+  ethAmount: BigNumber;
+}
+export type SweepEvent = TypedEvent<
+  [string, string, BigNumber, BigNumber],
+  SweepEventObject
+>;
+
+export type SweepEventFilter = TypedEventFilter<SweepEvent>;
 
 export interface DustSweeper extends BaseContract {
-  connect(runner?: ContractRunner | null): DustSweeper;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: DustSweeperInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    DOMAIN_SEPARATOR(overrides?: CallOverrides): Promise<[string]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    MAX_PROTOCOL_FEE_PCT(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  DOMAIN_SEPARATOR: TypedContractMethod<[], [string], "view">;
+    MAX_PROTOCOL_PAYOUT_SPLIT_PCT(
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
 
-  MAX_PROTOCOL_FEE_PCT: TypedContractMethod<[], [bigint], "view">;
+    MAX_SWEEP_ORDER_SIZE(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  MAX_PROTOCOL_PAYOUT_SPLIT_PCT: TypedContractMethod<[], [bigint], "view">;
+    MAX_TAKER_DISCOUNT_PCT(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  MAX_SWEEP_ORDER_SIZE: TypedContractMethod<[], [bigint], "view">;
+    MIN_OVERAGE_RETURN_WEI(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  MAX_TAKER_DISCOUNT_PCT: TypedContractMethod<[], [bigint], "view">;
+    TRUSTUS_REQUEST_VALUE(overrides?: CallOverrides): Promise<[string]>;
 
-  MIN_OVERAGE_RETURN_WEI: TypedContractMethod<[], [bigint], "view">;
+    destinations(arg0: string, overrides?: CallOverrides): Promise<[string]>;
 
-  TRUSTUS_REQUEST_VALUE: TypedContractMethod<[], [string], "view">;
+    getIsTrusted(
+      _trustedProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<[boolean]>;
 
-  destinations: TypedContractMethod<[arg0: AddressLike], [string], "view">;
+    getTokenDecimals(
+      _tokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<[number]>;
 
-  getIsTrusted: TypedContractMethod<
-    [_trustedProviderAddress: AddressLike],
-    [boolean],
-    "view"
-  >;
+    getTokenTakerDiscountTier(
+      _tokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<[number]>;
 
-  getTokenDecimals: TypedContractMethod<
-    [_tokenAddress: AddressLike],
-    [bigint],
-    "view"
-  >;
+    governorWallet(overrides?: CallOverrides): Promise<[string]>;
 
-  getTokenTakerDiscountTier: TypedContractMethod<
-    [_tokenAddress: AddressLike],
-    [bigint],
-    "view"
-  >;
+    owner(overrides?: CallOverrides): Promise<[string]>;
 
-  governorWallet: TypedContractMethod<[], [string], "view">;
+    payoutProtocolFees(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  owner: TypedContractMethod<[], [string], "view">;
+    protocolFee(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  payoutProtocolFees: TypedContractMethod<[], [void], "nonpayable">;
+    protocolPayoutSplit(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  protocolFee: TypedContractMethod<[], [bigint], "view">;
+    protocolWallet(overrides?: CallOverrides): Promise<[string]>;
 
-  protocolPayoutSplit: TypedContractMethod<[], [bigint], "view">;
+    renounceOwnership(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  protocolWallet: TypedContractMethod<[], [string], "view">;
+    setDestinationAddress(
+      _destinationAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
+    setGovernorWallet(
+      _governorWallet: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setDestinationAddress: TypedContractMethod<
-    [_destinationAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+    setProtocolFeePercent(
+      _protocolFeePercent: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setGovernorWallet: TypedContractMethod<
-    [_governorWallet: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+    setProtocolPayoutSplit(
+      _protocolPayoutSplitPercent: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setProtocolFeePercent: TypedContractMethod<
-    [_protocolFeePercent: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+    setProtocolWallet(
+      _protocolWallet: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setProtocolPayoutSplit: TypedContractMethod<
-    [_protocolPayoutSplitPercent: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+    setTakerDiscountPercent(
+      _takerDiscountPercent: BigNumberish,
+      _tier: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setProtocolWallet: TypedContractMethod<
-    [_protocolWallet: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+    setTokenDecimals(
+      _tokenAddress: string,
+      _decimals: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setTakerDiscountPercent: TypedContractMethod<
-    [_takerDiscountPercent: BigNumberish, _tier: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+    setTokenTakerDiscountTier(
+      _tokenAddress: string,
+      _tier: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setTokenDecimals: TypedContractMethod<
-    [_tokenAddress: AddressLike, _decimals: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+    setupToken(
+      _tokenAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setTokenTakerDiscountTier: TypedContractMethod<
-    [_tokenAddress: AddressLike, _tier: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+    sweepDust(
+      makers: string[],
+      tokenAddresses: string[],
+      packet: Trustus.TrustusPacketStruct,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setupToken: TypedContractMethod<
-    [_tokenAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+    sweepWhitelist(arg0: string, overrides?: CallOverrides): Promise<[boolean]>;
 
-  sweepDust: TypedContractMethod<
-    [
-      makers: AddressLike[],
-      tokenAddresses: AddressLike[],
-      packet: Trustus.TrustusPacketStruct
-    ],
-    [void],
-    "payable"
-  >;
+    sweepWhitelistOn(overrides?: CallOverrides): Promise<[boolean]>;
 
-  sweepWhitelist: TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
+    takerDiscountTiers(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
 
-  sweepWhitelistOn: TypedContractMethod<[], [boolean], "view">;
+    toggleIsTrusted(
+      _trustedProviderAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  takerDiscountTiers: TypedContractMethod<
-    [arg0: BigNumberish],
-    [bigint],
-    "view"
-  >;
+    toggleSweepWhitelist(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  toggleIsTrusted: TypedContractMethod<
-    [_trustedProviderAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+    toggleSweepWhitelistAddress(
+      _whitelistAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  toggleSweepWhitelist: TypedContractMethod<[], [void], "nonpayable">;
+    transferOwnership(
+      newOwner: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  toggleSweepWhitelistAddress: TypedContractMethod<
-    [_whitelistAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+    withdrawToken(
+      _tokenAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+  };
 
-  transferOwnership: TypedContractMethod<
-    [newOwner: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+  DOMAIN_SEPARATOR(overrides?: CallOverrides): Promise<string>;
 
-  withdrawToken: TypedContractMethod<
-    [_tokenAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+  MAX_PROTOCOL_FEE_PCT(overrides?: CallOverrides): Promise<BigNumber>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  MAX_PROTOCOL_PAYOUT_SPLIT_PCT(overrides?: CallOverrides): Promise<BigNumber>;
 
-  getFunction(
-    nameOrSignature: "DOMAIN_SEPARATOR"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "MAX_PROTOCOL_FEE_PCT"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "MAX_PROTOCOL_PAYOUT_SPLIT_PCT"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "MAX_SWEEP_ORDER_SIZE"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "MAX_TAKER_DISCOUNT_PCT"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "MIN_OVERAGE_RETURN_WEI"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "TRUSTUS_REQUEST_VALUE"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "destinations"
-  ): TypedContractMethod<[arg0: AddressLike], [string], "view">;
-  getFunction(
-    nameOrSignature: "getIsTrusted"
-  ): TypedContractMethod<
-    [_trustedProviderAddress: AddressLike],
-    [boolean],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "getTokenDecimals"
-  ): TypedContractMethod<[_tokenAddress: AddressLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "getTokenTakerDiscountTier"
-  ): TypedContractMethod<[_tokenAddress: AddressLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "governorWallet"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "owner"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "payoutProtocolFees"
-  ): TypedContractMethod<[], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "protocolFee"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "protocolPayoutSplit"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "protocolWallet"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "renounceOwnership"
-  ): TypedContractMethod<[], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "setDestinationAddress"
-  ): TypedContractMethod<
-    [_destinationAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "setGovernorWallet"
-  ): TypedContractMethod<[_governorWallet: AddressLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "setProtocolFeePercent"
-  ): TypedContractMethod<
-    [_protocolFeePercent: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "setProtocolPayoutSplit"
-  ): TypedContractMethod<
-    [_protocolPayoutSplitPercent: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "setProtocolWallet"
-  ): TypedContractMethod<[_protocolWallet: AddressLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "setTakerDiscountPercent"
-  ): TypedContractMethod<
-    [_takerDiscountPercent: BigNumberish, _tier: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "setTokenDecimals"
-  ): TypedContractMethod<
-    [_tokenAddress: AddressLike, _decimals: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "setTokenTakerDiscountTier"
-  ): TypedContractMethod<
-    [_tokenAddress: AddressLike, _tier: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "setupToken"
-  ): TypedContractMethod<[_tokenAddress: AddressLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "sweepDust"
-  ): TypedContractMethod<
-    [
-      makers: AddressLike[],
-      tokenAddresses: AddressLike[],
-      packet: Trustus.TrustusPacketStruct
-    ],
-    [void],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "sweepWhitelist"
-  ): TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "sweepWhitelistOn"
-  ): TypedContractMethod<[], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "takerDiscountTiers"
-  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "toggleIsTrusted"
-  ): TypedContractMethod<
-    [_trustedProviderAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "toggleSweepWhitelist"
-  ): TypedContractMethod<[], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "toggleSweepWhitelistAddress"
-  ): TypedContractMethod<
-    [_whitelistAddress: AddressLike],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "transferOwnership"
-  ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "withdrawToken"
-  ): TypedContractMethod<[_tokenAddress: AddressLike], [void], "nonpayable">;
+  MAX_SWEEP_ORDER_SIZE(overrides?: CallOverrides): Promise<BigNumber>;
 
-  getEvent(
-    key: "OwnershipTransferred"
-  ): TypedContractEvent<
-    OwnershipTransferredEvent.InputTuple,
-    OwnershipTransferredEvent.OutputTuple,
-    OwnershipTransferredEvent.OutputObject
-  >;
-  getEvent(
-    key: "ProtocolPayout"
-  ): TypedContractEvent<
-    ProtocolPayoutEvent.InputTuple,
-    ProtocolPayoutEvent.OutputTuple,
-    ProtocolPayoutEvent.OutputObject
-  >;
-  getEvent(
-    key: "Sweep"
-  ): TypedContractEvent<
-    SweepEvent.InputTuple,
-    SweepEvent.OutputTuple,
-    SweepEvent.OutputObject
-  >;
+  MAX_TAKER_DISCOUNT_PCT(overrides?: CallOverrides): Promise<BigNumber>;
+
+  MIN_OVERAGE_RETURN_WEI(overrides?: CallOverrides): Promise<BigNumber>;
+
+  TRUSTUS_REQUEST_VALUE(overrides?: CallOverrides): Promise<string>;
+
+  destinations(arg0: string, overrides?: CallOverrides): Promise<string>;
+
+  getIsTrusted(
+    _trustedProviderAddress: string,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
+
+  getTokenDecimals(
+    _tokenAddress: string,
+    overrides?: CallOverrides
+  ): Promise<number>;
+
+  getTokenTakerDiscountTier(
+    _tokenAddress: string,
+    overrides?: CallOverrides
+  ): Promise<number>;
+
+  governorWallet(overrides?: CallOverrides): Promise<string>;
+
+  owner(overrides?: CallOverrides): Promise<string>;
+
+  payoutProtocolFees(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  protocolFee(overrides?: CallOverrides): Promise<BigNumber>;
+
+  protocolPayoutSplit(overrides?: CallOverrides): Promise<BigNumber>;
+
+  protocolWallet(overrides?: CallOverrides): Promise<string>;
+
+  renounceOwnership(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  setDestinationAddress(
+    _destinationAddress: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  setGovernorWallet(
+    _governorWallet: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  setProtocolFeePercent(
+    _protocolFeePercent: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  setProtocolPayoutSplit(
+    _protocolPayoutSplitPercent: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  setProtocolWallet(
+    _protocolWallet: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  setTakerDiscountPercent(
+    _takerDiscountPercent: BigNumberish,
+    _tier: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  setTokenDecimals(
+    _tokenAddress: string,
+    _decimals: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  setTokenTakerDiscountTier(
+    _tokenAddress: string,
+    _tier: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  setupToken(
+    _tokenAddress: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  sweepDust(
+    makers: string[],
+    tokenAddresses: string[],
+    packet: Trustus.TrustusPacketStruct,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  sweepWhitelist(arg0: string, overrides?: CallOverrides): Promise<boolean>;
+
+  sweepWhitelistOn(overrides?: CallOverrides): Promise<boolean>;
+
+  takerDiscountTiers(
+    arg0: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  toggleIsTrusted(
+    _trustedProviderAddress: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  toggleSweepWhitelist(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  toggleSweepWhitelistAddress(
+    _whitelistAddress: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  transferOwnership(
+    newOwner: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  withdrawToken(
+    _tokenAddress: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  callStatic: {
+    DOMAIN_SEPARATOR(overrides?: CallOverrides): Promise<string>;
+
+    MAX_PROTOCOL_FEE_PCT(overrides?: CallOverrides): Promise<BigNumber>;
+
+    MAX_PROTOCOL_PAYOUT_SPLIT_PCT(
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    MAX_SWEEP_ORDER_SIZE(overrides?: CallOverrides): Promise<BigNumber>;
+
+    MAX_TAKER_DISCOUNT_PCT(overrides?: CallOverrides): Promise<BigNumber>;
+
+    MIN_OVERAGE_RETURN_WEI(overrides?: CallOverrides): Promise<BigNumber>;
+
+    TRUSTUS_REQUEST_VALUE(overrides?: CallOverrides): Promise<string>;
+
+    destinations(arg0: string, overrides?: CallOverrides): Promise<string>;
+
+    getIsTrusted(
+      _trustedProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    getTokenDecimals(
+      _tokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<number>;
+
+    getTokenTakerDiscountTier(
+      _tokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<number>;
+
+    governorWallet(overrides?: CallOverrides): Promise<string>;
+
+    owner(overrides?: CallOverrides): Promise<string>;
+
+    payoutProtocolFees(overrides?: CallOverrides): Promise<void>;
+
+    protocolFee(overrides?: CallOverrides): Promise<BigNumber>;
+
+    protocolPayoutSplit(overrides?: CallOverrides): Promise<BigNumber>;
+
+    protocolWallet(overrides?: CallOverrides): Promise<string>;
+
+    renounceOwnership(overrides?: CallOverrides): Promise<void>;
+
+    setDestinationAddress(
+      _destinationAddress: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setGovernorWallet(
+      _governorWallet: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setProtocolFeePercent(
+      _protocolFeePercent: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setProtocolPayoutSplit(
+      _protocolPayoutSplitPercent: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setProtocolWallet(
+      _protocolWallet: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setTakerDiscountPercent(
+      _takerDiscountPercent: BigNumberish,
+      _tier: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setTokenDecimals(
+      _tokenAddress: string,
+      _decimals: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setTokenTakerDiscountTier(
+      _tokenAddress: string,
+      _tier: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setupToken(_tokenAddress: string, overrides?: CallOverrides): Promise<void>;
+
+    sweepDust(
+      makers: string[],
+      tokenAddresses: string[],
+      packet: Trustus.TrustusPacketStruct,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    sweepWhitelist(arg0: string, overrides?: CallOverrides): Promise<boolean>;
+
+    sweepWhitelistOn(overrides?: CallOverrides): Promise<boolean>;
+
+    takerDiscountTiers(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    toggleIsTrusted(
+      _trustedProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    toggleSweepWhitelist(overrides?: CallOverrides): Promise<void>;
+
+    toggleSweepWhitelistAddress(
+      _whitelistAddress: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    transferOwnership(
+      newOwner: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    withdrawToken(
+      _tokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+  };
 
   filters: {
-    "OwnershipTransferred(address,address)": TypedContractEvent<
-      OwnershipTransferredEvent.InputTuple,
-      OwnershipTransferredEvent.OutputTuple,
-      OwnershipTransferredEvent.OutputObject
-    >;
-    OwnershipTransferred: TypedContractEvent<
-      OwnershipTransferredEvent.InputTuple,
-      OwnershipTransferredEvent.OutputTuple,
-      OwnershipTransferredEvent.OutputObject
-    >;
+    "OwnershipTransferred(address,address)"(
+      previousOwner?: string | null,
+      newOwner?: string | null
+    ): OwnershipTransferredEventFilter;
+    OwnershipTransferred(
+      previousOwner?: string | null,
+      newOwner?: string | null
+    ): OwnershipTransferredEventFilter;
 
-    "ProtocolPayout(uint256,uint256)": TypedContractEvent<
-      ProtocolPayoutEvent.InputTuple,
-      ProtocolPayoutEvent.OutputTuple,
-      ProtocolPayoutEvent.OutputObject
-    >;
-    ProtocolPayout: TypedContractEvent<
-      ProtocolPayoutEvent.InputTuple,
-      ProtocolPayoutEvent.OutputTuple,
-      ProtocolPayoutEvent.OutputObject
-    >;
+    "ProtocolPayout(uint256,uint256)"(
+      protocolSplit?: null,
+      governorSplit?: null
+    ): ProtocolPayoutEventFilter;
+    ProtocolPayout(
+      protocolSplit?: null,
+      governorSplit?: null
+    ): ProtocolPayoutEventFilter;
 
-    "Sweep(address,address,uint256,uint256)": TypedContractEvent<
-      SweepEvent.InputTuple,
-      SweepEvent.OutputTuple,
-      SweepEvent.OutputObject
-    >;
-    Sweep: TypedContractEvent<
-      SweepEvent.InputTuple,
-      SweepEvent.OutputTuple,
-      SweepEvent.OutputObject
-    >;
+    "Sweep(address,address,uint256,uint256)"(
+      makerAddress?: string | null,
+      tokenAddress?: string | null,
+      tokenAmount?: null,
+      ethAmount?: null
+    ): SweepEventFilter;
+    Sweep(
+      makerAddress?: string | null,
+      tokenAddress?: string | null,
+      tokenAmount?: null,
+      ethAmount?: null
+    ): SweepEventFilter;
+  };
+
+  estimateGas: {
+    DOMAIN_SEPARATOR(overrides?: CallOverrides): Promise<BigNumber>;
+
+    MAX_PROTOCOL_FEE_PCT(overrides?: CallOverrides): Promise<BigNumber>;
+
+    MAX_PROTOCOL_PAYOUT_SPLIT_PCT(
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    MAX_SWEEP_ORDER_SIZE(overrides?: CallOverrides): Promise<BigNumber>;
+
+    MAX_TAKER_DISCOUNT_PCT(overrides?: CallOverrides): Promise<BigNumber>;
+
+    MIN_OVERAGE_RETURN_WEI(overrides?: CallOverrides): Promise<BigNumber>;
+
+    TRUSTUS_REQUEST_VALUE(overrides?: CallOverrides): Promise<BigNumber>;
+
+    destinations(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
+
+    getIsTrusted(
+      _trustedProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getTokenDecimals(
+      _tokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getTokenTakerDiscountTier(
+      _tokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    governorWallet(overrides?: CallOverrides): Promise<BigNumber>;
+
+    owner(overrides?: CallOverrides): Promise<BigNumber>;
+
+    payoutProtocolFees(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    protocolFee(overrides?: CallOverrides): Promise<BigNumber>;
+
+    protocolPayoutSplit(overrides?: CallOverrides): Promise<BigNumber>;
+
+    protocolWallet(overrides?: CallOverrides): Promise<BigNumber>;
+
+    renounceOwnership(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setDestinationAddress(
+      _destinationAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setGovernorWallet(
+      _governorWallet: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setProtocolFeePercent(
+      _protocolFeePercent: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setProtocolPayoutSplit(
+      _protocolPayoutSplitPercent: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setProtocolWallet(
+      _protocolWallet: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setTakerDiscountPercent(
+      _takerDiscountPercent: BigNumberish,
+      _tier: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setTokenDecimals(
+      _tokenAddress: string,
+      _decimals: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setTokenTakerDiscountTier(
+      _tokenAddress: string,
+      _tier: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setupToken(
+      _tokenAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    sweepDust(
+      makers: string[],
+      tokenAddresses: string[],
+      packet: Trustus.TrustusPacketStruct,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    sweepWhitelist(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
+
+    sweepWhitelistOn(overrides?: CallOverrides): Promise<BigNumber>;
+
+    takerDiscountTiers(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    toggleIsTrusted(
+      _trustedProviderAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    toggleSweepWhitelist(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    toggleSweepWhitelistAddress(
+      _whitelistAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    transferOwnership(
+      newOwner: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    withdrawToken(
+      _tokenAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    DOMAIN_SEPARATOR(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    MAX_PROTOCOL_FEE_PCT(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    MAX_PROTOCOL_PAYOUT_SPLIT_PCT(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    MAX_SWEEP_ORDER_SIZE(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    MAX_TAKER_DISCOUNT_PCT(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    MIN_OVERAGE_RETURN_WEI(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    TRUSTUS_REQUEST_VALUE(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    destinations(
+      arg0: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getIsTrusted(
+      _trustedProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getTokenDecimals(
+      _tokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getTokenTakerDiscountTier(
+      _tokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    governorWallet(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    owner(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    payoutProtocolFees(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    protocolFee(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    protocolPayoutSplit(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    protocolWallet(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    renounceOwnership(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setDestinationAddress(
+      _destinationAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setGovernorWallet(
+      _governorWallet: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setProtocolFeePercent(
+      _protocolFeePercent: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setProtocolPayoutSplit(
+      _protocolPayoutSplitPercent: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setProtocolWallet(
+      _protocolWallet: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setTakerDiscountPercent(
+      _takerDiscountPercent: BigNumberish,
+      _tier: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setTokenDecimals(
+      _tokenAddress: string,
+      _decimals: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setTokenTakerDiscountTier(
+      _tokenAddress: string,
+      _tier: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setupToken(
+      _tokenAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    sweepDust(
+      makers: string[],
+      tokenAddresses: string[],
+      packet: Trustus.TrustusPacketStruct,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    sweepWhitelist(
+      arg0: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    sweepWhitelistOn(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    takerDiscountTiers(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    toggleIsTrusted(
+      _trustedProviderAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    toggleSweepWhitelist(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    toggleSweepWhitelistAddress(
+      _whitelistAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    transferOwnership(
+      newOwner: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    withdrawToken(
+      _tokenAddress: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
   };
 }

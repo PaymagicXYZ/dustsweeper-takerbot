@@ -5,7 +5,7 @@
   "author": "Evgeny Nasretdinov",
   "scripts": {
     "build": "rm -rf ./dist && tsc",
-    "generate-types": "typechain --target ethers-v6 --out-dir=src/abis/types/ \"src/abis/*.json\"",
+    "generate-types": "typechain --target ethers-v5 --out-dir=src/abis/types/ \"src/abis/*.json\"",
     "start": "node dist/index.js",
     "test": "npx hardhat test --network hardhat",
     "compile": "npx hardhat compile",
@@ -13,11 +13,12 @@
   },
   "dependencies": {
     "@flashbots/ethers-provider-bundle": "^0.6.2",
+    "@typechain/ethers-v5": "^11.1.1",
     "@types/jest": "^29.5.4",
     "@types/mocha": "^10.0.1",
     "axios": "^1.5.0",
     "dotenv": "^16.3.1",
-    "ethers": "^6.7.1",
+    "ethers": "^5.7.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
   },

@@ -3,29 +3,44 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  EventFragment,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedLogDescription,
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
+import type {
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
-export interface ERC20Interface extends Interface {
+export interface ERC20Interface extends utils.Interface {
+  functions: {
+    "name()": FunctionFragment;
+    "approve(address,uint256)": FunctionFragment;
+    "totalSupply()": FunctionFragment;
+    "transferFrom(address,address,uint256)": FunctionFragment;
+    "decimals()": FunctionFragment;
+    "balanceOf(address)": FunctionFragment;
+    "symbol()": FunctionFragment;
+    "transfer(address,uint256)": FunctionFragment;
+    "allowance(address,address)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "name"
       | "approve"
       | "totalSupply"
@@ -37,12 +52,10 @@ export interface ERC20Interface extends Interface {
       | "allowance"
   ): FunctionFragment;
 
-  getEvent(nameOrSignatureOrTopic: "Approval" | "Transfer"): EventFragment;
-
   encodeFunctionData(functionFragment: "name", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "approve",
-    values: [AddressLike, BigNumberish]
+    values: [string, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "totalSupply",
@@ -50,21 +63,18 @@ export interface ERC20Interface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "transferFrom",
-    values: [AddressLike, AddressLike, BigNumberish]
+    values: [string, string, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "decimals", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "balanceOf",
-    values: [AddressLike]
-  ): string;
+  encodeFunctionData(functionFragment: "balanceOf", values: [string]): string;
   encodeFunctionData(functionFragment: "symbol", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "transfer",
-    values: [AddressLike, BigNumberish]
+    values: [string, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "allowance",
-    values: [AddressLike, AddressLike]
+    values: [string, string]
   ): string;
 
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
@@ -82,205 +92,276 @@ export interface ERC20Interface extends Interface {
   decodeFunctionResult(functionFragment: "symbol", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "allowance", data: BytesLike): Result;
+
+  events: {
+    "Approval(address,address,uint256)": EventFragment;
+    "Transfer(address,address,uint256)": EventFragment;
+  };
+
+  getEvent(nameOrSignatureOrTopic: "Approval"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "Transfer"): EventFragment;
 }
 
-export namespace ApprovalEvent {
-  export type InputTuple = [
-    owner: AddressLike,
-    spender: AddressLike,
-    value: BigNumberish
-  ];
-  export type OutputTuple = [owner: string, spender: string, value: bigint];
-  export interface OutputObject {
-    owner: string;
-    spender: string;
-    value: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface ApprovalEventObject {
+  owner: string;
+  spender: string;
+  value: BigNumber;
 }
+export type ApprovalEvent = TypedEvent<
+  [string, string, BigNumber],
+  ApprovalEventObject
+>;
 
-export namespace TransferEvent {
-  export type InputTuple = [
-    from: AddressLike,
-    to: AddressLike,
-    value: BigNumberish
-  ];
-  export type OutputTuple = [from: string, to: string, value: bigint];
-  export interface OutputObject {
-    from: string;
-    to: string;
-    value: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export type ApprovalEventFilter = TypedEventFilter<ApprovalEvent>;
+
+export interface TransferEventObject {
+  from: string;
+  to: string;
+  value: BigNumber;
 }
+export type TransferEvent = TypedEvent<
+  [string, string, BigNumber],
+  TransferEventObject
+>;
+
+export type TransferEventFilter = TypedEventFilter<TransferEvent>;
 
 export interface ERC20 extends BaseContract {
-  connect(runner?: ContractRunner | null): ERC20;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: ERC20Interface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    name(overrides?: CallOverrides): Promise<[string]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    approve(
+      _spender: string,
+      _value: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  name: TypedContractMethod<[], [string], "view">;
+    totalSupply(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  approve: TypedContractMethod<
-    [_spender: AddressLike, _value: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
+    transferFrom(
+      _from: string,
+      _to: string,
+      _value: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  totalSupply: TypedContractMethod<[], [bigint], "view">;
+    decimals(overrides?: CallOverrides): Promise<[number]>;
 
-  transferFrom: TypedContractMethod<
-    [_from: AddressLike, _to: AddressLike, _value: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
+    balanceOf(
+      _owner: string,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber] & { balance: BigNumber }>;
 
-  decimals: TypedContractMethod<[], [bigint], "view">;
+    symbol(overrides?: CallOverrides): Promise<[string]>;
 
-  balanceOf: TypedContractMethod<[_owner: AddressLike], [bigint], "view">;
+    transfer(
+      _to: string,
+      _value: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  symbol: TypedContractMethod<[], [string], "view">;
+    allowance(
+      _owner: string,
+      _spender: string,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
+  };
 
-  transfer: TypedContractMethod<
-    [_to: AddressLike, _value: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
+  name(overrides?: CallOverrides): Promise<string>;
 
-  allowance: TypedContractMethod<
-    [_owner: AddressLike, _spender: AddressLike],
-    [bigint],
-    "view"
-  >;
+  approve(
+    _spender: string,
+    _value: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  totalSupply(overrides?: CallOverrides): Promise<BigNumber>;
 
-  getFunction(
-    nameOrSignature: "name"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "approve"
-  ): TypedContractMethod<
-    [_spender: AddressLike, _value: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "totalSupply"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "transferFrom"
-  ): TypedContractMethod<
-    [_from: AddressLike, _to: AddressLike, _value: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "decimals"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "balanceOf"
-  ): TypedContractMethod<[_owner: AddressLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "symbol"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "transfer"
-  ): TypedContractMethod<
-    [_to: AddressLike, _value: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "allowance"
-  ): TypedContractMethod<
-    [_owner: AddressLike, _spender: AddressLike],
-    [bigint],
-    "view"
-  >;
+  transferFrom(
+    _from: string,
+    _to: string,
+    _value: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getEvent(
-    key: "Approval"
-  ): TypedContractEvent<
-    ApprovalEvent.InputTuple,
-    ApprovalEvent.OutputTuple,
-    ApprovalEvent.OutputObject
-  >;
-  getEvent(
-    key: "Transfer"
-  ): TypedContractEvent<
-    TransferEvent.InputTuple,
-    TransferEvent.OutputTuple,
-    TransferEvent.OutputObject
-  >;
+  decimals(overrides?: CallOverrides): Promise<number>;
+
+  balanceOf(_owner: string, overrides?: CallOverrides): Promise<BigNumber>;
+
+  symbol(overrides?: CallOverrides): Promise<string>;
+
+  transfer(
+    _to: string,
+    _value: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  allowance(
+    _owner: string,
+    _spender: string,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  callStatic: {
+    name(overrides?: CallOverrides): Promise<string>;
+
+    approve(
+      _spender: string,
+      _value: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    totalSupply(overrides?: CallOverrides): Promise<BigNumber>;
+
+    transferFrom(
+      _from: string,
+      _to: string,
+      _value: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    decimals(overrides?: CallOverrides): Promise<number>;
+
+    balanceOf(_owner: string, overrides?: CallOverrides): Promise<BigNumber>;
+
+    symbol(overrides?: CallOverrides): Promise<string>;
+
+    transfer(
+      _to: string,
+      _value: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    allowance(
+      _owner: string,
+      _spender: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+  };
 
   filters: {
-    "Approval(address,address,uint256)": TypedContractEvent<
-      ApprovalEvent.InputTuple,
-      ApprovalEvent.OutputTuple,
-      ApprovalEvent.OutputObject
-    >;
-    Approval: TypedContractEvent<
-      ApprovalEvent.InputTuple,
-      ApprovalEvent.OutputTuple,
-      ApprovalEvent.OutputObject
-    >;
+    "Approval(address,address,uint256)"(
+      owner?: string | null,
+      spender?: string | null,
+      value?: null
+    ): ApprovalEventFilter;
+    Approval(
+      owner?: string | null,
+      spender?: string | null,
+      value?: null
+    ): ApprovalEventFilter;
 
-    "Transfer(address,address,uint256)": TypedContractEvent<
-      TransferEvent.InputTuple,
-      TransferEvent.OutputTuple,
-      TransferEvent.OutputObject
-    >;
-    Transfer: TypedContractEvent<
-      TransferEvent.InputTuple,
-      TransferEvent.OutputTuple,
-      TransferEvent.OutputObject
-    >;
+    "Transfer(address,address,uint256)"(
+      from?: string | null,
+      to?: string | null,
+      value?: null
+    ): TransferEventFilter;
+    Transfer(
+      from?: string | null,
+      to?: string | null,
+      value?: null
+    ): TransferEventFilter;
+  };
+
+  estimateGas: {
+    name(overrides?: CallOverrides): Promise<BigNumber>;
+
+    approve(
+      _spender: string,
+      _value: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    totalSupply(overrides?: CallOverrides): Promise<BigNumber>;
+
+    transferFrom(
+      _from: string,
+      _to: string,
+      _value: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    decimals(overrides?: CallOverrides): Promise<BigNumber>;
+
+    balanceOf(_owner: string, overrides?: CallOverrides): Promise<BigNumber>;
+
+    symbol(overrides?: CallOverrides): Promise<BigNumber>;
+
+    transfer(
+      _to: string,
+      _value: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    allowance(
+      _owner: string,
+      _spender: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    name(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    approve(
+      _spender: string,
+      _value: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    totalSupply(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    transferFrom(
+      _from: string,
+      _to: string,
+      _value: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    decimals(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    balanceOf(
+      _owner: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    symbol(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    transfer(
+      _to: string,
+      _value: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    allowance(
+      _owner: string,
+      _spender: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
   };
 }

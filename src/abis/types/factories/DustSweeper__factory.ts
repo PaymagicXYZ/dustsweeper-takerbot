@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type { DustSweeper, DustSweeperInterface } from "../DustSweeper";
 
 const _abi = [
@@ -725,9 +726,12 @@ const _abi = [
 export class DustSweeper__factory {
   static readonly abi = _abi;
   static createInterface(): DustSweeperInterface {
-    return new Interface(_abi) as DustSweeperInterface;
+    return new utils.Interface(_abi) as DustSweeperInterface;
   }
-  static connect(address: string, runner?: ContractRunner | null): DustSweeper {
-    return new Contract(address, _abi, runner) as unknown as DustSweeper;
+  static connect(
+    address: string,
+    signerOrProvider: Signer | Provider
+  ): DustSweeper {
+    return new Contract(address, _abi, signerOrProvider) as DustSweeper;
   }
 }

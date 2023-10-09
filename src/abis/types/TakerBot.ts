@@ -3,22 +3,24 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PayableOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
 export type TrustusPacketStruct = {
@@ -31,24 +33,36 @@ export type TrustusPacketStruct = {
 };
 
 export type TrustusPacketStructOutput = [
-  v: bigint,
-  r: string,
-  s: string,
-  request: string,
-  deadline: bigint,
-  payload: string
+  number,
+  string,
+  string,
+  string,
+  BigNumber,
+  string
 ] & {
-  v: bigint;
+  v: number;
   r: string;
   s: string;
   request: string;
-  deadline: bigint;
+  deadline: BigNumber;
   payload: string;
 };
 
-export interface TakerBotInterface extends Interface {
+export interface TakerBotInterface extends utils.Interface {
+  functions: {
+    "DUSTSWEEPER_ADDRESS()": FunctionFragment;
+    "ONE_INCH_ROUTER()": FunctionFragment;
+    "acceptOwnershipTransfer()": FunctionFragment;
+    "commitOwnershipTransfer(address)": FunctionFragment;
+    "futureOwner()": FunctionFragment;
+    "isApproved(address,address)": FunctionFragment;
+    "owner()": FunctionFragment;
+    "payoutEth()": FunctionFragment;
+    "runSweep(address[],address[],(uint8,bytes32,bytes32,bytes32,uint256,bytes),address[],bytes[])": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "DUSTSWEEPER_ADDRESS"
       | "ONE_INCH_ROUTER"
       | "acceptOwnershipTransfer"
@@ -74,7 +88,7 @@ export interface TakerBotInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "commitOwnershipTransfer",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "futureOwner",
@@ -82,19 +96,13 @@ export interface TakerBotInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "isApproved",
-    values: [AddressLike, AddressLike]
+    values: [string, string]
   ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(functionFragment: "payoutEth", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "runSweep",
-    values: [
-      AddressLike[],
-      AddressLike[],
-      TrustusPacketStruct,
-      AddressLike[],
-      BytesLike[]
-    ]
+    values: [string[], string[], TrustusPacketStruct, string[], BytesLike[]]
   ): string;
 
   decodeFunctionResult(
@@ -121,132 +129,219 @@ export interface TakerBotInterface extends Interface {
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "payoutEth", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "runSweep", data: BytesLike): Result;
+
+  events: {};
 }
 
 export interface TakerBot extends BaseContract {
-  connect(runner?: ContractRunner | null): TakerBot;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: TakerBotInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    DUSTSWEEPER_ADDRESS(overrides?: CallOverrides): Promise<[string]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    ONE_INCH_ROUTER(overrides?: CallOverrides): Promise<[string]>;
 
-  DUSTSWEEPER_ADDRESS: TypedContractMethod<[], [string], "view">;
+    acceptOwnershipTransfer(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  ONE_INCH_ROUTER: TypedContractMethod<[], [string], "view">;
+    commitOwnershipTransfer(
+      _futureOwner: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  acceptOwnershipTransfer: TypedContractMethod<[], [boolean], "nonpayable">;
+    futureOwner(overrides?: CallOverrides): Promise<[string]>;
 
-  commitOwnershipTransfer: TypedContractMethod<
-    [_futureOwner: AddressLike],
-    [boolean],
-    "nonpayable"
-  >;
+    isApproved(
+      arg0: string,
+      arg1: string,
+      overrides?: CallOverrides
+    ): Promise<[boolean]>;
 
-  futureOwner: TypedContractMethod<[], [string], "view">;
+    owner(overrides?: CallOverrides): Promise<[string]>;
 
-  isApproved: TypedContractMethod<
-    [arg0: AddressLike, arg1: AddressLike],
-    [boolean],
-    "view"
-  >;
+    payoutEth(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  owner: TypedContractMethod<[], [string], "view">;
-
-  payoutEth: TypedContractMethod<[], [void], "nonpayable">;
-
-  runSweep: TypedContractMethod<
-    [
-      makers: AddressLike[],
-      tokenAddresses: AddressLike[],
+    runSweep(
+      makers: string[],
+      tokenAddresses: string[],
       packet: TrustusPacketStruct,
-      uniqueTokenAddresses: AddressLike[],
-      oneinchCallDataByToken: BytesLike[]
-    ],
-    [void],
-    "payable"
-  >;
+      uniqueTokenAddresses: string[],
+      oneinchCallDataByToken: BytesLike[],
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
+  };
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  DUSTSWEEPER_ADDRESS(overrides?: CallOverrides): Promise<string>;
 
-  getFunction(
-    nameOrSignature: "DUSTSWEEPER_ADDRESS"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "ONE_INCH_ROUTER"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "acceptOwnershipTransfer"
-  ): TypedContractMethod<[], [boolean], "nonpayable">;
-  getFunction(
-    nameOrSignature: "commitOwnershipTransfer"
-  ): TypedContractMethod<[_futureOwner: AddressLike], [boolean], "nonpayable">;
-  getFunction(
-    nameOrSignature: "futureOwner"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "isApproved"
-  ): TypedContractMethod<
-    [arg0: AddressLike, arg1: AddressLike],
-    [boolean],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "owner"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "payoutEth"
-  ): TypedContractMethod<[], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "runSweep"
-  ): TypedContractMethod<
-    [
-      makers: AddressLike[],
-      tokenAddresses: AddressLike[],
+  ONE_INCH_ROUTER(overrides?: CallOverrides): Promise<string>;
+
+  acceptOwnershipTransfer(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  commitOwnershipTransfer(
+    _futureOwner: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  futureOwner(overrides?: CallOverrides): Promise<string>;
+
+  isApproved(
+    arg0: string,
+    arg1: string,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
+
+  owner(overrides?: CallOverrides): Promise<string>;
+
+  payoutEth(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  runSweep(
+    makers: string[],
+    tokenAddresses: string[],
+    packet: TrustusPacketStruct,
+    uniqueTokenAddresses: string[],
+    oneinchCallDataByToken: BytesLike[],
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  callStatic: {
+    DUSTSWEEPER_ADDRESS(overrides?: CallOverrides): Promise<string>;
+
+    ONE_INCH_ROUTER(overrides?: CallOverrides): Promise<string>;
+
+    acceptOwnershipTransfer(overrides?: CallOverrides): Promise<boolean>;
+
+    commitOwnershipTransfer(
+      _futureOwner: string,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    futureOwner(overrides?: CallOverrides): Promise<string>;
+
+    isApproved(
+      arg0: string,
+      arg1: string,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    owner(overrides?: CallOverrides): Promise<string>;
+
+    payoutEth(overrides?: CallOverrides): Promise<void>;
+
+    runSweep(
+      makers: string[],
+      tokenAddresses: string[],
       packet: TrustusPacketStruct,
-      uniqueTokenAddresses: AddressLike[],
-      oneinchCallDataByToken: BytesLike[]
-    ],
-    [void],
-    "payable"
-  >;
+      uniqueTokenAddresses: string[],
+      oneinchCallDataByToken: BytesLike[],
+      overrides?: CallOverrides
+    ): Promise<void>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    DUSTSWEEPER_ADDRESS(overrides?: CallOverrides): Promise<BigNumber>;
+
+    ONE_INCH_ROUTER(overrides?: CallOverrides): Promise<BigNumber>;
+
+    acceptOwnershipTransfer(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    commitOwnershipTransfer(
+      _futureOwner: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    futureOwner(overrides?: CallOverrides): Promise<BigNumber>;
+
+    isApproved(
+      arg0: string,
+      arg1: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    owner(overrides?: CallOverrides): Promise<BigNumber>;
+
+    payoutEth(overrides?: Overrides & { from?: string }): Promise<BigNumber>;
+
+    runSweep(
+      makers: string[],
+      tokenAddresses: string[],
+      packet: TrustusPacketStruct,
+      uniqueTokenAddresses: string[],
+      oneinchCallDataByToken: BytesLike[],
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    DUSTSWEEPER_ADDRESS(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    ONE_INCH_ROUTER(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    acceptOwnershipTransfer(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    commitOwnershipTransfer(
+      _futureOwner: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    futureOwner(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    isApproved(
+      arg0: string,
+      arg1: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    owner(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    payoutEth(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    runSweep(
+      makers: string[],
+      tokenAddresses: string[],
+      packet: TrustusPacketStruct,
+      uniqueTokenAddresses: string[],
+      oneinchCallDataByToken: BytesLike[],
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+  };
 }

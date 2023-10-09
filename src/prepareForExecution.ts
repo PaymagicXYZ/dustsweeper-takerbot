@@ -27,7 +27,7 @@ export const prepareExecute = async (tokenAddressesWithMakers: {tokenAddress: st
   const dustSweeperContract = new ethers.Contract(dustSweeperAddress, DustSweeper.abi, provider)
 
   // Calculate ETH send amount
-  const protocolPercent = await dustSweeperContract.protocolFee();
+  const protocolPercent = (await dustSweeperContract.protocolFee()).toBigInt();
   const powPercent = 10n ** 4n
   
   const preparedCallData = []
@@ -38,20 +38,20 @@ export const prepareExecute = async (tokenAddressesWithMakers: {tokenAddress: st
     const makersForSC: string[] = []
     const tokenAddress = tokenAddressWithMakers.tokenAddress
     const tokenContract = new ethers.Contract(tokenAddress, ERC20.abi, provider);
-    const decimals = await tokenContract.decimals();
-    const powDecimals = 10n ** decimals
+    const decimals = await tokenContract.decimals()
+    const powDecimals = 10n ** BigInt(decimals)
     const quotePrice = BigInt(prices.pricesWei[prices.tokenArray.indexOf(tokenAddress)])
-    const takerDiscountTier = await dustSweeperContract.getTokenTakerDiscountTier(tokenAddress);
-    const takerPercent = await dustSweeperContract.takerDiscountTiers(takerDiscountTier);
-    
+    const takerDiscountTier = await dustSweeperContract.getTokenTakerDiscountTier(tokenAddress)
+    const takerPercent = (await dustSweeperContract.takerDiscountTiers(takerDiscountTier)).toBigInt()
+
     let totalTokenAmount = 0n;
 
     for (const maker of tokenAddressWithMakers.makers) {
-      const allowance = await tokenContract.allowance(maker, dustSweeperAddress);
-      const balance = await tokenContract.balanceOf(maker);
+      const allowance = (await tokenContract.allowance(maker, dustSweeperAddress)).toBigInt()
+      const balance = (await tokenContract.balanceOf(maker)).toBigInt()
       const amount = balance < allowance ? balance : allowance;
       totalTokenAmount = totalTokenAmount + amount;
-      const totalPrice = quotePrice * (BigInt(amount)) / (powDecimals);
+      const totalPrice = quotePrice * (amount) / (powDecimals);
       const discountedPrice = totalPrice * (powPercent - takerPercent) / powPercent;
       const protocolTotal = totalPrice * (protocolPercent) / (powPercent);
       totalEthSend = totalEthSend + discountedPrice + protocolTotal;
@@ -63,7 +63,9 @@ export const prepareExecute = async (tokenAddressesWithMakers: {tokenAddress: st
     // sender's balance of eth
     const senderEthBalance = await provider.getBalance(senderAddress)
     
-    if (totalEthSend > 0n && totalEthSend < senderEthBalance) {
+    if (totalEthSend > 0n 
+      && senderEthBalance.gt(totalEthSend) // comment when testing
+      ) {
       const swapData = await prepareSwapData(tokenAddress, totalTokenAmount.toString(), botContractAddress, senderAddress)
       if (swapData) {
         preparedCallData.push({
@@ -75,7 +77,7 @@ export const prepareExecute = async (tokenAddressesWithMakers: {tokenAddress: st
         })
       }
     } else {
-      console.log(`totalEthSend is 0, no sweeps today for token ${tokenAddress}`)
+      console.log(`totalEthSend is ${totalEthSend}, no sweeps today for token ${tokenAddress} by sender balance ${senderEthBalance}`)
     }
 
   }

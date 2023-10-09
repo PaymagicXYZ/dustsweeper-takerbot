@@ -18,7 +18,11 @@ export default {
     refreshInterval: 60 * 1, // 1 minute
     fromBlock: 18192415 - 8*224688,
     chunkSizeForPreparation: 10,
+    chunkSizeForTokenMonitoring: 50,
     maxMakersLengthToJoin: 5,
-    turnOnExecution: false, // change after frontrunning is resolved
+    turnOnExecution: true, // change after frontrunning is resolved
+  },
+  flashbots: {
+    flashbotsAuthSignerPK: process.env.FLASHBOTS_AUTH_SIGNER,
   }
 }

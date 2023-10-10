@@ -18,19 +18,14 @@ To configure the project on your local machine, follow these straightforward ste
    yarn run build
    ```
 
-3. **Start the Bot**: Initiate the bot's functionality.
-
-   ```bash
-   yarn run start
-   ```
-
-4. **Deployment with Docker**: If necessary, you can deploy the project using the provided Dockerfile.
+3. **Upload Lambda**: from archived bundled function `./dist/index.zip`
 
 Additionally, you'll need to configure the following environment variables:
 
 1. `INFURA_API_KEY`
 2. `PK` (private key for the bot's runner)
 3. `ONEINCH_API_KEY`
+4. `FLASHBOTS_AUTH_SIGNER` (any other private key for wallet with no funds, used for flashbots signer reputation)
 
 You can customize the configuration according to your requirements:
 
@@ -40,7 +35,9 @@ botSettings: {
   refreshInterval: 60 * 1, // 1 minute, how often the cron job will initiate the bot's script
   fromBlock: 18192415 - 8 * 224688, // The block from which the bot will monitor allowance events for the Dustsweeper contract
   chunkSizeForPreparation: 10, // The number of orders for the preparation script
+  chunkSizeForTokenMonitoring: 50, // size of chunks with token address to monitor and check allowances
   maxMakersLengthToJoin: 5, // Depending on the length of makers, which SC call data should be joined
   turnOnExecution: false, // Change this after frontrunning issues are resolved
+  maxChunkCount: 3, // count of tokenchunks (chunkSizeForTokenMonitoring) in one lambda execution
 }
 ```

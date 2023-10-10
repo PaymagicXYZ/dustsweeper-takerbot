@@ -11,24 +11,18 @@ import { FlashbotsBundleProvider, FlashbotsTransactionResponse, RelayResponseErr
 
 const takerBotAddress = config.botSettings.conractAddress
 
-let fromBlock = config.botSettings.fromBlock
-const monthInBlocks = 224688
 
-export const executeSweeps = async () => {
+export const executeSweeps = async (lastTokenChunk: number): Promise<number> => {
   let succesfulCount = 0
   const block = await provider.getBlock("latest");
-  const currentBlockNumber = block.number
-  if (fromBlock > currentBlockNumber - monthInBlocks) {
-    fromBlock = currentBlockNumber - monthInBlocks
-  }
   const flashbotsProvider = await getFlashbotsProvider()
   const takerBot = new ethers.Contract(takerBotAddress, TakerBotI.abi, provider) as any as TakerBot
-
+  
   await new Promise(r => setTimeout(r, 1000))
-
+  
   // balance of wallet in eth
   const walletBalance = await provider.getBalance(wallet.address)
-
+  
   const allEthTokenAddresses = await getAllAvailableTokens()
   const tokenChunks: string[][] = []
   const tokenChunkSize = config.botSettings.chunkSizeForTokenMonitoring
@@ -36,7 +30,12 @@ export const executeSweeps = async () => {
     tokenChunks.push(allEthTokenAddresses.slice(i, i + tokenChunkSize))
   }
 
-  for (const tokenChunk of tokenChunks) {
+  let currentTokenChunk = lastTokenChunk % tokenChunks.length
+  const maxTokenChunk = lastTokenChunk + config.botSettings.maxChunkCount > tokenChunks.length ? tokenChunks.length : lastTokenChunk + config.botSettings.maxChunkCount
+  
+  while (currentTokenChunk < maxTokenChunk) {
+    const tokenChunk = tokenChunks[currentTokenChunk]
+    currentTokenChunk++
     try {
       console.log('tokenChunks', tokenChunks.indexOf(tokenChunk) + 1, '/', tokenChunks.length)
       // wait before each chunk for previous txs to be mined
@@ -51,7 +50,6 @@ export const executeSweeps = async () => {
       }
 
       // monitor
-      // const tokenAddressesWithMakers = await monitorAvailableOrders(tokenChunk, fromBlock, fromBlock + monthInBlocks)
       const tokenAddressesWithMakers = await monitorAvailableOrders(tokenChunk)
     
       // split tokenAddressesWithMakers into chunks
@@ -204,5 +202,5 @@ export const executeSweeps = async () => {
   }
 
   console.log('succesfulCount: ', succesfulCount)
-  fromBlock += monthInBlocks
+  return currentTokenChunk
 }

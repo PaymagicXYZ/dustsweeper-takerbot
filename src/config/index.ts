@@ -21,6 +21,7 @@ export default {
     chunkSizeForTokenMonitoring: 50,
     maxMakersLengthToJoin: 5,
     turnOnExecution: true, // change after frontrunning is resolved
+    maxChunkCount: 3, // lambda limitations
   },
   flashbots: {
     flashbotsAuthSignerPK: process.env.FLASHBOTS_AUTH_SIGNER,

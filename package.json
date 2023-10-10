@@ -4,18 +4,23 @@
   "main": "dist/index.js",
   "author": "Evgeny Nasretdinov",
   "scripts": {
-    "build": "rm -rf ./dist && tsc",
     "generate-types": "typechain --target ethers-v5 --out-dir=src/abis/types/ \"src/abis/*.json\"",
     "start": "node dist/index.js",
     "test": "npx hardhat test --network hardhat",
     "compile": "npx hardhat compile",
-    "deploy": "npx hardhat run --network mainnet src/utils/deploy.ts"
+    "deploy": "npx hardhat run --network mainnet src/utils/deploy.ts",
+    "prebuild": "rm -rf dist",
+    "build": "esbuild index.ts --bundle --minify --sourcemap --platform=node --target=es2020 --outfile=dist/index.js",
+    "postbuild": "cd dist && zip -r index.zip index.js*"
   },
   "dependencies": {
     "@flashbots/ethers-provider-bundle": "^0.6.2",
     "@typechain/ethers-v5": "^11.1.1",
+    "@types/aws-lambda": "^8.10.124",
     "@types/jest": "^29.5.4",
     "@types/mocha": "^10.0.1",
+    "aws-lambda": "^1.0.7",
+    "aws-sdk": "^2.1472.0",
     "axios": "^1.5.0",
     "dotenv": "^16.3.1",
     "ethers": "^5.7.1",
@@ -32,6 +37,7 @@
     "@typechain/ethers-v6": "^0.5.0",
     "@typechain/hardhat": "^9.0.0",
     "chai": "^4.3.8",
+    "esbuild": "^0.15.7",
     "hardhat": "^2.17.3",
     "hardhat-gas-reporter": "^1.0.9",
     "solidity-coverage": "^0.8.4",

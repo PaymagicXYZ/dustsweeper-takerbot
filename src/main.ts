@@ -31,7 +31,7 @@ export const executeSweeps = async (lastTokenChunk: number): Promise<number> => 
   }
 
   let currentTokenChunk = lastTokenChunk % tokenChunks.length
-  const maxTokenChunk = lastTokenChunk + config.botSettings.maxChunkCount > tokenChunks.length ? tokenChunks.length : lastTokenChunk + config.botSettings.maxChunkCount
+  const maxTokenChunk = currentTokenChunk + config.botSettings.maxChunkCount > tokenChunks.length ? tokenChunks.length : currentTokenChunk + config.botSettings.maxChunkCount
   
   while (currentTokenChunk < maxTokenChunk) {
     const tokenChunk = tokenChunks[currentTokenChunk]

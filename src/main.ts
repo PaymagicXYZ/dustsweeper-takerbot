@@ -42,11 +42,15 @@ export const executeSweeps = async (lastTokenChunk: number): Promise<number> => 
       await new Promise(r => setTimeout(r, 1000))
       
       // if something left on contract, send it back to owner
-      const dustSweeperBalance = await provider.getBalance(takerBotAddress)
-      if (dustSweeperBalance.toBigInt() > 0n) {
-        console.log('dustSweeperBalance: ', dustSweeperBalance)
-        const payoutTx = await takerBot.connect(wallet).payoutEth()
-        console.log("payout txHash: " + payoutTx.hash);
+      const takerBotContractBalance = await provider.getBalance(takerBotAddress)
+      if (takerBotContractBalance.toBigInt() > 0n) {
+        console.log(`Balance on bot's contract : `, takerBotContractBalance)
+        try {
+          const payoutTx = await takerBot.connect(wallet).payoutEth()
+          console.log("payout txHash: " + payoutTx.hash);
+        } catch (e) {
+          console.error(e.message)
+        }
       }
 
       // monitor
@@ -128,10 +132,17 @@ export const executeSweeps = async (lastTokenChunk: number): Promise<number> => 
             console.log('not enough eth, not executing')
             console.log('gas + value: ', gasEstimate.toBigInt() * flashbotsGasPrice + value)
             console.log('walletBalance: ', walletBalance.toBigInt())
-          } else if (estimatedReturn - value < gasEstimate.toBigInt() * flashbotsGasPrice) {
+          } else if ((estimatedReturn - value < gasEstimate.toBigInt() * flashbotsGasPrice) && !config.botSettings.skipGasNotProfitSweeps) {
             console.log('gas is larger than profit, not executing')
             console.log('profit: ', estimatedReturn - value)
             console.log('gas: ', gasEstimate.toBigInt() * flashbotsGasPrice)
+          } else if (config.botSettings.skipGasNotProfitSweeps && 
+            (estimatedReturn - value < gasEstimate.toBigInt() * flashbotsGasPrice) && 
+            ((gasEstimate.toBigInt() * flashbotsGasPrice) - (estimatedReturn - value) > config.botSettings.maxBoundOnGasLost)) {
+            console.log('gas is larger than acceptable loss, not executing')
+            console.log('profit: ', estimatedReturn - value)
+            console.log('gas: ', gasEstimate.toBigInt() * flashbotsGasPrice)
+            console.log('acceptable loss: ', config.botSettings.maxBoundOnGasLost)
           } else {
             console.log('executing')
     

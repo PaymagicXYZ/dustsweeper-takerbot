@@ -39,7 +39,7 @@ export const prepareSwapData = async (tokenAddress: string, totalTokenAmount: st
     dst: eth_1inch_address,
     amount: totalTokenAmount.toString(),
     from: botContractAddress,
-    slippage: 1, // Maximum acceptable slippage percentage for the swap (e.g., 1 for 1%)
+    slippage: 5, // Maximum acceptable slippage percentage for the swap (e.g., 1 for 1%)
     disableEstimate: true, // Set to true to disable estimation of swap details
     receiver: senderAddress
   }

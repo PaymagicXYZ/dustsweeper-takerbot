@@ -23,7 +23,7 @@ export default {
     turnOnExecution: true, // change after frontrunning is resolved
     maxChunkCount: 3, // lambda limitations
     skipGasNotProfitSweeps: process.env.SKIP_GAS_NOT_PROFIT_SWEEPS === 'true', 
-    maxBoundOnGasLost:  BigInt(0.001 * 10 ** 18), // (0.001 ETH) if skipGasNotProfitSweeps is true, this is the max gas lost to consider a sweep profitable
+    maxBoundOnGasLost:  BigInt(Number(process.env.MAX_BOUND_ON_GAS_LOST || 0.001) * 10 ** 18), // (0.001 ETH) if skipGasNotProfitSweeps is true, this is the max gas lost to consider a sweep profitable
   },
   flashbots: {
     flashbotsAuthSignerPK: process.env.FLASHBOTS_AUTH_SIGNER,

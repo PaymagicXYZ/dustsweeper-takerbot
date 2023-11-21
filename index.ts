@@ -9,8 +9,8 @@ import { executeSweeps } from './src/main'
 const getDataFromS3 = async () => {
   const s3 = new S3()
   const params = {
-    Bucket: 'takerbot-data',
-    Key: 'data.json'
+    Bucket: config.s3.bucketName,
+    Key: config.s3.key,
   }
   const data = await s3.getObject(params).promise()
   return data.Body?.toString('utf-8')
@@ -19,8 +19,8 @@ const getDataFromS3 = async () => {
 const uploadDataToS3 = async (data: any) => {
   const s3 = new S3()
   const params = {
-    Bucket: 'takerbot-data',
-    Key: 'data.json',
+    Bucket: config.s3.bucketName,
+    Key: config.s3.key,
     Body: JSON.stringify(data)
   }
   const res = await s3.putObject(params).promise()
@@ -42,9 +42,3 @@ export const handler = async (event: APIGatewayEvent, context: Context): Promise
 
 // run this when executing locally or in a container (not as lambda function)
 export const startTakerBot = () => cron(config.botSettings.refreshInterval, 'takerBot', executeSweeps)
-// startTakerBot()
-//   .catch(e => {
-  //     console.error(e)
-  //     process.exit(1)
-  //   })
-  

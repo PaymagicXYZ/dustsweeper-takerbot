@@ -33,7 +33,6 @@ You can customize the configuration according to your requirements:
 botSettings: {
   conractAddress: '0xb09582787Be1C764C7A15bfF032e133691a5b435',
   refreshInterval: 60 * 1, // 1 minute, how often the cron job will initiate the bot's script
-  fromBlock: 18192415 - 8 * 224688, // The block from which the bot will monitor allowance events for the Dustsweeper contract
   chunkSizeForPreparation: 10, // The number of orders for the preparation script
   chunkSizeForTokenMonitoring: 50, // size of chunks with token address to monitor and check allowances
   maxMakersLengthToJoin: 5, // Depending on the length of makers, which SC call data should be joined
@@ -41,3 +40,7 @@ botSettings: {
   maxChunkCount: 3, // count of tokenchunks (chunkSizeForTokenMonitoring) in one lambda execution
 }
 ```
+
+## AWS Architecture
+
+CloudWatch Events are triggering the lambda function, which process small part of the token addresses and then saves the last processed chunk number in the S3 bucket. When the lambda is triggered again it will check the S3 bucket and continue with appropriate chunk of token addresses.

@@ -7,7 +7,7 @@ import { GroupedCallDataT, PreparedCallDataT, TokenAddressWithMakersT } from "./
 import TakerBotI from './abis/TakerBot.json'
 import { getFlashbotsProvider, provider, wallet } from "./network";
 import { TakerBot } from './abis/types';
-import { FlashbotsBundleProvider, FlashbotsTransactionResponse, RelayResponseError } from '@flashbots/ethers-provider-bundle';
+import { FlashbotsBundleProvider, FlashbotsTransactionResponse } from '@flashbots/ethers-provider-bundle';
 
 const takerBotAddress = config.botSettings.conractAddress
 

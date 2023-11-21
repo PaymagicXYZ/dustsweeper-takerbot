@@ -16,7 +16,6 @@ export default {
   botSettings: {
     conractAddress: '0xb09582787Be1C764C7A15bfF032e133691a5b435',
     refreshInterval: 60 * 1, // 1 minute
-    fromBlock: 18192415 - 8*224688,
     chunkSizeForPreparation: 10,
     chunkSizeForTokenMonitoring: 50,
     maxMakersLengthToJoin: 5,
@@ -24,6 +23,10 @@ export default {
     maxChunkCount: 3, // lambda limitations
     skipGasNotProfitSweeps: process.env.SKIP_GAS_NOT_PROFIT_SWEEPS === 'true', 
     maxBoundOnGasLost:  BigInt(Number(process.env.MAX_BOUND_ON_GAS_LOST || 0.001) * 10 ** 18), // (0.001 ETH) if skipGasNotProfitSweeps is true, this is the max gas lost to consider a sweep profitable
+  },
+  s3:{
+    bucketName: process.env.S3_BUCKET_NAME || 'takerbot-data',
+    key: process.env.S3_KEY || 'data.json',
   },
   flashbots: {
     flashbotsAuthSignerPK: process.env.FLASHBOTS_AUTH_SIGNER,

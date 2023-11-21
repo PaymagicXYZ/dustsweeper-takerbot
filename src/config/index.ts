@@ -13,6 +13,9 @@ export default {
     apiBaseUrl: 'https://api.1inch.dev/swap/v5.2/1',
     api_key: process.env.ONEINCH_API_KEY
   },
+  coingecko: {
+    apiBaseUrl: 'https://api.coingecko.com/api/v3',
+  },
   botSettings: {
     conractAddress: '0xb09582787Be1C764C7A15bfF032e133691a5b435',
     refreshInterval: 60 * 1, // 1 minute

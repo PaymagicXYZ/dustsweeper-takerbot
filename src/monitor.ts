@@ -9,7 +9,7 @@ import { provider } from './network'
 export const getAllAvailableTokens = async (): Promise<string[]> => {
   console.log('getAllAvailableTokens')
   // get all of the erc20 tokens from coingecko
-  const tokens = await axios.get('https://api.coingecko.com/api/v3/coins/list?include_platform=true')
+  const tokens = await axios.get(`${config.coingecko.apiBaseUrl}/coins/list?include_platform=true`)
   const allEthTokenAddresses = tokens.data.map((token: any) => (token.platforms && token.platforms.ethereum) ? token.platforms.ethereum : null).filter((token: any) => token !== null)
   
   console.log('allEthTokenAddresses.length: ', allEthTokenAddresses.length)

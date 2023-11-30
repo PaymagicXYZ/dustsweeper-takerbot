@@ -21,13 +21,12 @@ const buildTxForSwap = async (swapParams: { [key: string]: any}) => {
     
     const data = await res.json();
     if (res.status !== 200) {
-      console.log("res.status: ", res.status)
-      console.log("description: ", data.description)
+      console.log(`Error: res.status: ${res.status}, description: ${data.description}`)
       return null
     }
     return data.tx
   } catch (e) {
-    console.error(e)
+    console.error(`Error fetching swap data for ${swapParams.src}: ${e.message}`)
     return null
   }
 }
@@ -46,16 +45,20 @@ export const prepareSwapData = async (tokenAddress: string, totalTokenAmount: st
 
   const swapTransaction = await buildTxForSwap(swapParams);
   if (swapTransaction) {
-    const quotePrice = await fetch(apiRequestUrl("/quote", {
-      src: swapParams.src,
-      dst: swapParams.dst,
-      amount: swapParams.amount
-    }), headers)
-    const quotePriceData = await quotePrice.json();
-    await new Promise(r => setTimeout(r, 1000))
-    return {
-      swapData: swapTransaction.data as string,
-      estimatedSwapReturn: quotePriceData.toAmount
+    try {
+      const quotePrice = await fetch(apiRequestUrl("/quote", {
+        src: swapParams.src,
+        dst: swapParams.dst,
+        amount: swapParams.amount
+      }), headers)
+      const quotePriceData = await quotePrice.json();
+      await new Promise(r => setTimeout(r, 1000))
+      return {
+        swapData: swapTransaction.data as string,
+        estimatedSwapReturn: quotePriceData.toAmount
+      }
+    } catch (e) {
+      console.error(`Error fetching quote price for ${tokenAddress}: ${e.message}`)
     }
   }
   return null

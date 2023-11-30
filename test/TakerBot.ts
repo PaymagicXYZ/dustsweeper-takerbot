@@ -72,7 +72,7 @@ describe("TakerBot contract", async function () {
     await takerBot.deployed();
 
     const allEthTokenAddresses = await getAllAvailableTokens()
-    const tokenChunks: string[][] = []
+    const tokenChunks: {address: string, symbol: string}[][] = []
     const tokenChunkSize = config.botSettings.chunkSizeForTokenMonitoring
     // for (let i = 0; i < allEthTokenAddresses.length; i += tokenChunkSize) { // uncomment for full simultaion
     for (let i = 0; i < 10; i += tokenChunkSize) { // reduce for testing

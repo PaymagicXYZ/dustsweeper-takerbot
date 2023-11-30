@@ -18,6 +18,9 @@ export type GroupedCallDataT = {
 }
 
 export type TokenAddressWithMakersT = {
-  tokenAddress: string,
+  token: {
+    address: string,
+    symbol: string,
+  },
   makers: any[]
 }

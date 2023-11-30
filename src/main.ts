@@ -145,16 +145,15 @@ export const executeSweeps = async (lastTokenChunk: number): Promise<number> => 
             console.log('gas in ETH: ', ethers.utils.formatEther(gasEstimate.toBigInt() * flashbotsGasPrice))
             console.log('acceptable loss in ETH: ', ethers.utils.formatEther(config.botSettings.maxBoundOnGasLost))
           } else if (config.botSettings.skipGasNotProfitSweeps && !config.botSettings.alwaysUseFlashbots &&
-            (estimatedReturn - value < gasEstimate.toBigInt() * BigInt(feeData.gasPrice.toBigInt())) && 
+            (estimatedReturn - value < gasEstimate.toBigInt() * flashbotsGasPrice) && 
             ((gasEstimate.toBigInt() * feeData.gasPrice.toBigInt()) - (estimatedReturn - value) > config.botSettings.maxBoundOnGasLost)) {
             console.log('gas is larger than acceptable loss, not executing')
             console.log('profit in ETH: ', ethers.utils.formatEther(estimatedReturn - value))
             console.log('gas in ETH: ', ethers.utils.formatEther(gasEstimate.toBigInt() * feeData.gasPrice.toBigInt()))
             console.log('acceptable loss in ETH: ', ethers.utils.formatEther(config.botSettings.maxBoundOnGasLost))
           } else if (config.botSettings.skipGasNotProfitSweeps && !config.botSettings.alwaysUseFlashbots &&
-            ((estimatedReturn - value < gasEstimate.toBigInt() * BigInt(feeData.gasPrice.toBigInt())) && 
-            ((gasEstimate.toBigInt() * feeData.gasPrice.toBigInt()) - (estimatedReturn - value) <= config.botSettings.maxBoundOnGasLost)) || 
-            ((estimatedReturn - value >= gasEstimate.toBigInt() * BigInt(feeData.gasPrice.toBigInt())) && (gasEstimate.toBigInt() < config.botSettings.maxBoundOnGasLost))) {
+            ((estimatedReturn - value < gasEstimate.toBigInt() * flashbotsGasPrice) && 
+            ((gasEstimate.toBigInt() * feeData.gasPrice.toBigInt()) - (estimatedReturn - value) <= config.botSettings.maxBoundOnGasLost))) {
             console.log('executing without flashbots')
             if (config.botSettings.turnOnExecution) {
               const sweepTx = await takerBot.connect(wallet).runSweep(
